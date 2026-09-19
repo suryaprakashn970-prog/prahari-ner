@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Shield, AlertCircle, PhoneCall } from 'lucide-react';
 import { auth } from '../services/firebase';
@@ -20,6 +20,11 @@ export default function Login() {
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+
+  // References to ensure unique RecaptchaVerifier instance and stable lifecycle
+  const recaptchaVerifierRef = useRef(null);
+  const confirmationResultRef = useRef(null);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -29,6 +34,68 @@ export default function Login() {
     }
   }, [user, authLoading, navigate, location]);
 
+  // Clean up and completely reset the reCAPTCHA DOM container and verifier
+  const resetRecaptchaState = () => {
+    if (recaptchaVerifierRef.current) {
+      try {
+        recaptchaVerifierRef.current.clear();
+      } catch (e) {
+        console.warn('reCAPTCHA clear warning:', e);
+      }
+      recaptchaVerifierRef.current = null;
+    }
+
+    // Recreate fresh DOM node inside wrapper so grecaptcha never sees an already-rendered node
+    const wrapper = document.getElementById('recaptcha-wrapper');
+    if (wrapper) {
+      wrapper.innerHTML = '<div id="recaptcha-container"></div>';
+    }
+  };
+
+  // Lifecycle cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      resetRecaptchaState();
+    };
+  }, []);
+
+  // Safe factory for RecaptchaVerifier
+  const getOrCreateRecaptchaVerifier = () => {
+    if (!auth) return null;
+
+    if (recaptchaVerifierRef.current) {
+      return recaptchaVerifierRef.current;
+    }
+
+    let container = document.getElementById('recaptcha-container');
+    if (!container) {
+      const wrapper = document.getElementById('recaptcha-wrapper');
+      if (wrapper) {
+        wrapper.innerHTML = '<div id="recaptcha-container"></div>';
+        container = document.getElementById('recaptcha-container');
+      }
+    }
+
+    if (!container) {
+      throw new Error('reCAPTCHA container element not found in DOM.');
+    }
+
+    const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      size: 'invisible',
+      callback: () => {
+        // reCAPTCHA solved
+      },
+      'expired-callback': () => {
+        setError('reCAPTCHA challenge expired. Please click Send SMS OTP again.');
+        resetRecaptchaState();
+      },
+    });
+
+    recaptchaVerifierRef.current = verifier;
+    return verifier;
+  };
+
+  // Google Sign-In with real Firebase provider
   const handleGoogleSignIn = async () => {
     if (!auth) {
       setError('Google Sign-In is not configured yet. Add the Firebase configuration to frontend/.env.');
@@ -64,71 +131,120 @@ export default function Login() {
     }
   };
 
+  // Handle phone number input with automatic formatting and sanitization
+  const handlePhoneChange = (e) => {
+    let raw = e.target.value.trim();
+
+    // Strip +91, 91, or leading zero if pasted/typed with country code
+    if (raw.startsWith('+91')) {
+      raw = raw.slice(3).trim();
+    } else if (raw.startsWith('+')) {
+      raw = raw.slice(1).trim();
+    } else if (raw.startsWith('91') && raw.length > 10) {
+      raw = raw.slice(2).trim();
+    } else if (raw.startsWith('0') && raw.length > 10) {
+      raw = raw.slice(1).trim();
+    }
+
+    const digitsOnly = raw.replace(/\D/g, '').slice(0, 10);
+    setPhone(digitsOnly);
+    if (error) setError('');
+  };
+
+  // Send SMS OTP via real Firebase Phone Authentication
   const handleSendOtp = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
+
     if (!auth) {
       setError('Phone authentication is not configured yet. Add the Firebase configuration to frontend/.env.');
       return;
     }
 
-    if (phone.length < 10) {
-      setError('Please enter a valid 10-digit mobile number.');
+    // Phone number validation
+    const cleanDigits = phone.replace(/\D/g, '');
+    if (!cleanDigits) {
+      setError('Please enter your 10-digit mobile number.');
+      return;
+    }
+    if (cleanDigits.length !== 10) {
+      setError('Please enter a complete 10-digit Indian mobile number (+91XXXXXXXXXX).');
+      return;
+    }
+    if (!/^[6-9]\d{9}$/.test(cleanDigits)) {
+      setError('Please enter a valid Indian mobile number starting with 6, 7, 8, or 9.');
       return;
     }
 
+    // Prevent duplicate clicks
+    if (sendingOtp || loading) return;
+
+    setSendingOtp(true);
     setLoading(true);
     setError('');
 
     try {
-      if (!window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          size: 'invisible',
-        });
-      }
+      const verifier = getOrCreateRecaptchaVerifier();
+      const formattedPhone = `+91${cleanDigits}`;
 
-      const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`;
       const confirmationResult = await signInWithPhoneNumber(
         auth,
         formattedPhone,
-        window.recaptchaVerifier
+        verifier
       );
+
+      confirmationResultRef.current = confirmationResult;
       window.confirmationResult = confirmationResult;
       setStep(2);
     } catch (err) {
       console.error('Phone Sign-In error:', err);
-      if (err.code === 'auth/invalid-phone-number') {
-        setError('Invalid phone number format.');
+      const errMsg = err?.message || '';
+
+      // Reset reCAPTCHA state so next attempt starts with a clean verifier
+      resetRecaptchaState();
+
+      if (err.code === 'auth/operation-not-allowed') {
+        setError('Phone Authentication is not enabled or the SMS region is restricted in Firebase Console (Authentication > Sign-in method > Phone).');
+      } else if (errMsg.includes('already been rendered') || err.code === 'auth/captcha-check-failed') {
+        setError('reCAPTCHA security challenge reset. Please verify your phone number and click Send SMS OTP again.');
+      } else if (err.code === 'auth/invalid-phone-number') {
+        setError('Invalid phone number format. Please check the 10-digit number and try again.');
       } else if (err.code === 'auth/too-many-requests') {
-        setError('Too many attempts. Please try again later.');
+        setError('Too many attempts. Please wait a few minutes before trying again.');
       } else if (err.code === 'auth/quota-exceeded') {
-        setError('SMS quota exceeded for today. Please use Google Sign-In.');
+        setError('Daily SMS quota exceeded in Firebase project. Please use Google Sign-In.');
+      } else if (err.code === 'auth/network-request-failed') {
+        setError('Network connection failed. Please check your internet connection.');
       } else {
-        setError(err.message || 'Failed to send SMS OTP.');
-      }
-      if (window.recaptchaVerifier) {
-        try {
-          window.recaptchaVerifier.clear();
-          window.recaptchaVerifier = null;
-        } catch (_) {}
+        setError(err.message || 'Failed to send SMS OTP. Please check the number and try again.');
       }
     } finally {
+      setSendingOtp(false);
       setLoading(false);
     }
   };
 
+  // Verify entered OTP
   const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    if (!window.confirmationResult) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    const confirmation = confirmationResultRef.current || window.confirmationResult;
+    if (!confirmation) {
       setError('Verification session expired. Please request a new OTP.');
       setStep(1);
       return;
     }
 
+    if (otp.length !== 6) {
+      setError('Please enter the complete 6-digit OTP code.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      await window.confirmationResult.confirm(otp);
+      await confirmation.confirm(otp);
+      resetRecaptchaState();
       const destination = location.state?.from?.pathname || '/dashboard';
       navigate(destination, { replace: true });
     } catch (err) {
@@ -145,6 +261,22 @@ export default function Login() {
     }
   };
 
+  // Navigate back to phone input step, keeping phone number editable
+  const handleChangeNumber = () => {
+    setStep(1);
+    setOtp('');
+    setError('');
+    resetRecaptchaState();
+  };
+
+  // Resend OTP to existing number
+  const handleResendOtp = async () => {
+    if (sendingOtp || loading) return;
+    setError('');
+    resetRecaptchaState();
+    await handleSendOtp();
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
@@ -158,9 +290,9 @@ export default function Login() {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-gray-100">
+        <div className="bg-white py-8 px-4 shadow sm:rounded-xl sm:px-10 border border-gray-100">
           {error && (
-            <div className="mb-4 bg-red-50 text-red-700 p-3 rounded text-sm flex items-start gap-2 border border-red-200">
+            <div className="mb-4 bg-red-50 text-red-700 p-3 rounded-lg text-sm flex items-start gap-2 border border-red-200">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span>{error}</span>
             </div>
@@ -168,7 +300,7 @@ export default function Login() {
 
           {!auth && (
             <div className="mb-6 text-sm text-center text-amber-900 bg-amber-50 border border-amber-300 p-4 rounded-md">
-              <p className="font-semibold mb-1">Google Sign-In is not configured yet.</p>
+              <p className="font-semibold mb-1">Firebase Authentication Not Configured</p>
               <p className="text-xs text-amber-800">
                 Add the Firebase configuration to frontend/.env or Render environment variables to activate real authentication.
               </p>
@@ -177,11 +309,12 @@ export default function Login() {
 
           {step === 1 ? (
             <>
+              {/* Google Sign-In */}
               <button
                 type="button"
                 onClick={handleGoogleSignIn}
-                disabled={!auth || loading}
-                className="w-full flex items-center justify-center gap-3 py-2.5 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 mb-6 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={!auth || loading || sendingOtp}
+                className="w-full flex items-center justify-center gap-3 py-2.5 px-4 border border-gray-300 rounded-lg shadow-xs bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 mb-6 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path
@@ -201,93 +334,146 @@ export default function Login() {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                   />
                 </svg>
-                {loading ? 'Signing in...' : 'Continue with Google'}
+                {loading && !sendingOtp ? 'Signing in...' : 'Continue with Google'}
               </button>
 
               <div className="relative mb-6">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-300" />
                 </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500 font-medium">OR PHONE OTP</span>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="px-2 bg-white text-gray-500 font-bold tracking-wider">
+                    Or Sign in with Phone OTP
+                  </span>
                 </div>
               </div>
 
+              {/* Phone OTP Form */}
               <form onSubmit={handleSendOtp} className="space-y-4">
                 <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                    Mobile Number
-                  </label>
-                  <div className="mt-1 flex rounded-md shadow-sm">
-                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm font-medium">
-                      +91
+                  <div className="flex justify-between items-center mb-1">
+                    <label htmlFor="phone-input" className="block text-sm font-semibold text-gray-700">
+                      Mobile Phone Number
+                    </label>
+                    <span className="text-[11px] text-gray-500 font-mono">
+                      +91XXXXXXXXXX
+                    </span>
+                  </div>
+
+                  <div className="flex rounded-lg shadow-xs border border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 overflow-hidden bg-white">
+                    <span className="inline-flex items-center px-3.5 bg-gray-100 text-gray-700 text-sm font-bold border-r border-gray-300 select-none">
+                      🇮🇳 +91
                     </span>
                     <input
                       type="tel"
+                      id="phone-input"
                       name="phone"
-                      id="phone"
-                      maxLength={10}
+                      autoComplete="tel"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                      disabled={!auth || loading}
-                      className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md border border-gray-300 focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:opacity-50"
-                      placeholder="10-digit mobile number"
+                      onChange={handlePhoneChange}
+                      disabled={loading || sendingOtp}
+                      className="flex-1 min-w-0 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none disabled:bg-gray-50 disabled:text-gray-500"
+                      placeholder="Enter 10-digit number (e.g. 9876543210)"
                     />
+                    {phone && !loading && !sendingOtp && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPhone('');
+                          setError('');
+                        }}
+                        className="px-2.5 text-gray-400 hover:text-gray-600 text-xs font-bold"
+                        title="Clear number"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
+                  <p className="text-[11px] text-gray-500 mt-1.5">
+                    Enter any 10-digit Indian phone number. You can change it anytime before sending.
+                  </p>
                 </div>
-
-                <div id="recaptcha-container"></div>
 
                 <button
                   type="submit"
-                  disabled={!auth || phone.length < 10 || loading}
-                  className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors"
+                  disabled={!auth || phone.length < 10 || loading || sendingOtp}
+                  className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
-                  {loading ? 'Sending OTP...' : 'Send SMS OTP'}
+                  {sendingOtp ? 'Sending SMS OTP...' : 'Send SMS OTP'}
                 </button>
               </form>
             </>
           ) : (
-            <form onSubmit={handleVerifyOtp} className="space-y-6">
-              <div>
-                <label htmlFor="otp" className="block text-sm font-medium text-gray-700 text-center mb-2">
+            /* Step 2: OTP Verification Form */
+            <form onSubmit={handleVerifyOtp} className="space-y-5">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <PhoneCall className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-bold text-gray-900">
                   Verify Phone Number
-                </label>
-                <p className="text-sm text-gray-500 text-center mb-4">
-                  Enter 6-digit OTP sent to +91 {phone}
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter the 6-digit verification code sent to:
                 </p>
+                <div className="inline-flex items-center gap-1.5 mt-1 font-mono font-bold text-sm text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                  +91 {phone}
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="otp-input" className="sr-only">
+                  6-Digit OTP
+                </label>
                 <input
                   type="text"
+                  id="otp-input"
                   name="otp"
-                  id="otp"
                   maxLength={6}
+                  autoComplete="one-time-code"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                   placeholder="------"
-                  className="block w-full text-center tracking-[0.6em] text-2xl font-mono px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  disabled={loading}
+                  className="block w-full text-center tracking-[0.6em] text-2xl font-mono px-3 py-2.5 border border-gray-300 rounded-lg shadow-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 bg-white"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={otp.length !== 6 || loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 transition-colors"
+                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 transition-colors cursor-pointer"
               >
-                {loading ? 'Verifying...' : 'Verify & Continue'}
+                {loading ? 'Verifying OTP...' : 'Verify & Continue'}
               </button>
 
-              <div className="flex justify-between text-sm text-blue-600">
-                <button type="button" onClick={handleSendOtp} disabled={loading} className="hover:underline">
-                  Resend OTP
+              <div className="flex justify-between items-center text-xs text-blue-600 pt-1">
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={loading || sendingOtp}
+                  className="hover:underline font-semibold cursor-pointer disabled:opacity-50"
+                >
+                  {sendingOtp ? 'Resending...' : 'Resend SMS OTP'}
                 </button>
-                <button type="button" onClick={() => { setStep(1); setOtp(''); }} className="hover:underline">
-                  Change Number
+                <button
+                  type="button"
+                  onClick={handleChangeNumber}
+                  disabled={loading}
+                  className="hover:underline font-semibold cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                >
+                  ← Edit Phone Number
                 </button>
               </div>
             </form>
           )}
 
-          {/* Emergency Calling Section - Always accessible without login */}
+          {/* reCAPTCHA wrapper with pristine dynamic container */}
+          <div id="recaptcha-wrapper" className="flex justify-center my-2">
+            <div id="recaptcha-container"></div>
+          </div>
+
+          {/* Direct Emergency Contacts (No login required) */}
           <div className="mt-8 pt-6 border-t border-gray-200 text-center">
             <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-3">
               Direct Emergency Contacts (No Login Required)
