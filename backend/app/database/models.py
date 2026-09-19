@@ -1,4 +1,4 @@
-﻿from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from .database import Base
@@ -35,6 +35,7 @@ class Alert(Base):
     zone_id = Column(Integer, ForeignKey("risk_zones.id"))
     risk_level = Column(String)
     message = Column(Text)
+    status = Column(String, default="ACTIVE")
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     zone = relationship("RiskZone")
@@ -46,7 +47,7 @@ class FieldReport(Base):
     state = Column(String, nullable=True)
     district = Column(String, nullable=True)
     location = Column(String)                        # Village / road / landmark name
-    # GPS coordinates — optional (set by browser geolocation, null if unavailable)
+    # GPS coordinates - optional (set by browser geolocation, null if unavailable)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     report_type = Column(String)

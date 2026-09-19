@@ -9,6 +9,18 @@ from ..ml import predictor
 
 router = APIRouter()
 
+# Reusable constant defining the 8 North Eastern Region (NER) states
+NER_STATES = [
+    "Arunachal Pradesh",
+    "Assam",
+    "Manipur",
+    "Meghalaya",
+    "Mizoram",
+    "Nagaland",
+    "Tripura",
+    "Sikkim"
+]
+
 class RiskPredictionRequest(BaseModel):
     rainfall_24h: float
     rainfall_72h: float
@@ -19,20 +31,16 @@ class RiskPredictionRequest(BaseModel):
 
 @router.get("/zones")
 def get_risk_zones(db: Session = Depends(get_db)):
-    """Returns all monitored risk zones with their latest calculated risks."""
-    zones = db.query(models.RiskZone).all()
+    """Returns all monitored risk zones strictly belonging to the 8 NER states."""
+    zones = db.query(models.RiskZone).filter(models.RiskZone.state.in_(NER_STATES)).all()
     return zones
 
 @router.post("/predict")
 def predict_risk(request: RiskPredictionRequest, db: Session = Depends(get_db)):
-    """Runs a manual risk prediction and returns the result."""
+    """Runs manual risk prediction using server-side XGBoost model."""
     features = request.dict()
-    
     try:
         prediction = predictor.predict_risk(features)
-        
-        # If prediction triggers an alert logic, we could tie it to a zone, 
-        # but for this standalone prediction, we just return it.
         return prediction
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

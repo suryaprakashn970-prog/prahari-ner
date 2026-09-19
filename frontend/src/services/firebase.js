@@ -10,15 +10,15 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Initialize Firebase only if config is provided
-let app;
-let auth;
+// Initialize Firebase Web SDK only if configuration is provided
+let app = null;
+let auth = null;
 
 if (firebaseConfig.apiKey) {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
 } else {
-  console.warn("Firebase config is missing. Authentication features will run in Demo mode.");
+  console.warn("Firebase config is missing. Authentication features are disabled until configured.");
 }
 
-export { auth };
+export { auth, firebaseConfig };

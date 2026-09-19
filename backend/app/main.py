@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .api import model, data, risk, alerts, reports, notifications, weather, roads, response
@@ -9,10 +10,25 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="PRAHARI-NER API")
 
-# CORS
+# Allowed CORS origins
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+    "https://prahari-frontend-6wa3.onrender.com",
+]
+
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    cleaned_url = frontend_url.strip().rstrip("/")
+    if cleaned_url and cleaned_url not in origins:
+        origins.append(cleaned_url)
+
+# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
