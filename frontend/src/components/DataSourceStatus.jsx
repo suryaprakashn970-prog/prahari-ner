@@ -1,20 +1,35 @@
 import React from 'react';
 import { Database, Clock } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function DataSourceStatus({ dataStatus }) {
+  const { t } = useLanguage();
   if (!dataStatus) return null;
+
+  const getModeLabel = (mode) => {
+    switch (mode) {
+      case 'LIVE_PUBLIC':
+        return t('dataSourceStatus.livePublic', 'LIVE PUBLIC');
+      case 'CACHED_PUBLIC':
+        return t('dataSourceStatus.cachedPublic', 'CACHED PUBLIC');
+      default:
+        return mode ? mode.replace('_', ' ') : '';
+    }
+  };
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
       <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
         <Database className="w-4 h-4 text-indigo-500" />
-        Data Sources
+        {t('dataSourceStatus.title', 'Data Sources')}
       </h2>
       
       <div className="flex flex-col sm:flex-row gap-4">
         {Object.entries(dataStatus).map(([key, info]) => (
           <div key={key} className="flex-1 bg-gray-50 p-2 rounded border border-gray-100">
-            <div className="text-xs font-bold text-gray-700 capitalize mb-1">{key.replace('_', ' ')}</div>
+            <div className="text-xs font-bold text-gray-700 capitalize mb-1">
+              {t(`dataSourceStatus.${key}`, key.replace('_', ' '))}
+            </div>
             <div className="flex justify-between items-end">
               <div>
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
@@ -22,7 +37,7 @@ export default function DataSourceStatus({ dataStatus }) {
                   info.mode === 'CACHED_PUBLIC' ? 'bg-blue-200 text-blue-800' :
                   'bg-yellow-200 text-yellow-800'
                 }`}>
-                  {info.mode.replace('_', ' ')}
+                  {getModeLabel(info.mode)}
                 </span>
                 <div className="text-xs text-gray-500 mt-1">{info.source}</div>
               </div>

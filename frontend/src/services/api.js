@@ -1,4 +1,4 @@
-﻿import axios from 'axios';
+import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
@@ -28,6 +28,7 @@ const api = {
 
   getResponsePriorities: () => client.get('/api/response/priorities').then(res => res.data),
   sendNotification: (data) => client.post('/api/notifications/send', data).then(res => res.data),
+  runWhatIfAnalysis: (zoneId) => client.post('/api/risk/what-if', { zone_id: zoneId }).then(res => res.data),
 };
 
 export default api;

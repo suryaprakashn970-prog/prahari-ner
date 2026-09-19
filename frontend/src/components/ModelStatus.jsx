@@ -1,7 +1,9 @@
 import React from 'react';
-import { Cpu, Activity, Database, Info } from 'lucide-react';
+import { Cpu, Activity, Database } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function ModelStatus({ status }) {
+  const { t } = useLanguage();
   if (!status) return null;
 
   return (
@@ -9,21 +11,21 @@ export default function ModelStatus({ status }) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-1 flex items-center gap-1">
-            XGBoost Risk Model
+            {t('modelStatus.title', 'XGBoost Risk Model')}
           </h2>
           <div className="flex items-center gap-2 mt-2">
             {status.loaded ? (
               <span className="flex items-center gap-1.5 text-sm font-bold text-green-700 bg-green-50 px-2 py-1 rounded border border-green-200">
-                <span className="w-2 h-2 rounded-full bg-green-500"></span> MODEL LOADED
+                <span className="w-2 h-2 rounded-full bg-green-500"></span> {t('modelStatus.modelLoaded', 'MODEL LOADED')}
               </span>
             ) : (
               <span className="flex items-center gap-1.5 text-sm font-bold text-red-700 bg-red-50 px-2 py-1 rounded border border-red-200">
-                <span className="w-2 h-2 rounded-full bg-red-500"></span> MODEL NOT LOADED
+                <span className="w-2 h-2 rounded-full bg-red-500"></span> {t('modelStatus.modelNotLoaded', 'MODEL NOT LOADED')}
               </span>
             )}
             {status.offline_capable && (
               <span className="text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-1 rounded border border-gray-200">
-                OFFLINE-CAPABLE
+                {t('modelStatus.offlineCapable', 'OFFLINE-CAPABLE')}
               </span>
             )}
           </div>
@@ -33,16 +35,22 @@ export default function ModelStatus({ status }) {
           <div className="flex flex-wrap gap-4 text-sm text-gray-600">
             <div className="flex items-center gap-1.5">
               <Cpu className="w-4 h-4 text-blue-500" />
-              <span className="font-medium">{status.inference} INFERENCE</span>
+              <span className="font-medium">
+                {status.inference} {t('modelStatus.inference', 'INFERENCE')}
+              </span>
             </div>
             <div className="flex items-center gap-1.5">
               <Database className="w-4 h-4 text-indigo-500" />
-              <span className="font-medium">{status.features?.length || 0} FEATURES</span>
+              <span className="font-medium">
+                {status.features?.length || 0} {t('modelStatus.features', 'FEATURES')}
+              </span>
             </div>
             {status.metrics?.accuracy && (
               <div className="flex items-center gap-1.5">
                 <Activity className="w-4 h-4 text-green-500" />
-                <span className="font-medium">ACCURACY {(status.metrics.accuracy * 100).toFixed(1)}%</span>
+                <span className="font-medium">
+                  {t('modelStatus.accuracy', 'ACCURACY')} {(status.metrics.accuracy * 100).toFixed(1)}%
+                </span>
               </div>
             )}
           </div>

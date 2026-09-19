@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageLayout from '../components/PageLayout';
 import ModelStatus from '../components/ModelStatus';
 import RiskMap from '../components/RiskMap';
@@ -13,12 +14,11 @@ import ManualPredictionForm from '../components/ManualPredictionForm';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
 import api from '../services/api';
+import { useLanguage } from '../context/LanguageContext';
 
 // ── Emergency Contacts Block ─────────────────────────────────
-// All buttons use real tel: links. No login, no location, no internet needed
-// for the call itself. Meets 44px min touch target throughout.
-
 function EmergencyContacts() {
+  const { t } = useLanguage();
   return (
     <div
       aria-label="Emergency contacts"
@@ -33,10 +33,10 @@ function EmergencyContacts() {
       {/* Section heading */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <span style={{ fontSize: 15, fontWeight: 800, color: '#111827', letterSpacing: '-0.2px' }}>
-          Emergency Contacts
+          {t('emergency.title', 'Emergency Contacts')}
         </span>
         <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: '#6b7280' }}>
-          — Call without internet
+          {t('emergency.callWithoutInternet', '— Call without internet')}
         </span>
       </div>
 
@@ -69,13 +69,13 @@ function EmergencyContacts() {
             <span style={{ fontSize: 32, lineHeight: 1 }}>🚨</span>
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.75)', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 2 }}>
-                Emergency
+                {t('emergency.primaryBadge', 'Emergency')}
               </div>
               <div style={{ fontSize: 34, fontWeight: 900, color: '#fff', lineHeight: 1, letterSpacing: '-1px' }}>
                 112
               </div>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', marginTop: 2 }}>
-                Police · Fire · Ambulance
+                {t('emergency.primarySub', 'Police · Fire · Ambulance')}
               </div>
             </div>
           </div>
@@ -91,16 +91,12 @@ function EmergencyContacts() {
             whiteSpace: 'nowrap',
             letterSpacing: '0.3px',
           }}>
-            📞 Call 112
+            {t('emergency.call112', '📞 Call 112')}
           </div>
         </div>
       </a>
 
       {/* ── Secondary three: 108 / 101 / 100 ────────────────── */}
-      {/* 
-          Mobile:  stacked — 108 full, 101+100 side by side on sm, or all stacked on xs
-          Desktop: three equal columns
-      */}
       <div
         style={{
           display: 'grid',
@@ -117,10 +113,10 @@ function EmergencyContacts() {
         >
           <SecondaryEmergencyCard
             emoji="🚑"
-            label="Ambulance"
+            label={t('emergency.ambulance', 'Ambulance')}
             number="108"
-            subtitle="Emergency medical assistance"
-            callText="Call Ambulance"
+            subtitle={t('emergency.ambulanceSub', 'Emergency medical assistance')}
+            callText={t('emergency.callAmbulance', 'Call Ambulance')}
             borderColor="#059669"
             bg="#f0fdf4"
             hoverBg="#dcfce7"
@@ -136,10 +132,10 @@ function EmergencyContacts() {
         >
           <SecondaryEmergencyCard
             emoji="🚒"
-            label="Fire"
+            label={t('emergency.fire', 'Fire')}
             number="101"
-            subtitle="Fire and rescue emergency"
-            callText="Call Fire"
+            subtitle={t('emergency.fireSub', 'Fire and rescue emergency')}
+            callText={t('emergency.callFire', 'Call Fire')}
             borderColor="#d97706"
             bg="#fffbeb"
             hoverBg="#fef3c7"
@@ -155,10 +151,10 @@ function EmergencyContacts() {
         >
           <SecondaryEmergencyCard
             emoji="👮"
-            label="Police"
+            label={t('emergency.police', 'Police')}
             number="100"
-            subtitle="Police emergency assistance"
-            callText="Call Police"
+            subtitle={t('emergency.policeSub', 'Police emergency assistance')}
+            callText={t('emergency.callPolice', 'Call Police')}
             borderColor="#2563eb"
             bg="#eff6ff"
             hoverBg="#dbeafe"
@@ -167,7 +163,6 @@ function EmergencyContacts() {
         </a>
       </div>
 
-      {/* Responsive override: on xs screens, stack secondary cards */}
       <style>{`
         @media (max-width: 479px) {
           .emergency-secondary-grid {
@@ -229,9 +224,10 @@ function SecondaryEmergencyCard({ emoji, label, number, subtitle, callText, bord
   );
 }
 
-// ── Dashboard ────────────────────────────────────────────────
-
+// ── Dashboard Main Component ─────────────────────────────────
 export default function Dashboard() {
+  const { t } = useLanguage();
+  const navigate = useNavigate();
   const [modelStatus, setModelStatus] = useState(null);
   const [dataStatus, setDataStatus] = useState(null);
   const [riskZones, setRiskZones] = useState([]);
@@ -278,13 +274,13 @@ export default function Dashboard() {
         }
       } catch (err) {
         console.error("Failed to load dashboard data", err);
-        setError("Failed to load application data. Please ensure the backend is running.");
+        setError(t('errors.failedToLoad', "Failed to load application data. Please ensure the backend is running."));
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [t]);
 
   return (
     <PageLayout dataStatus={dataStatus}>
@@ -303,15 +299,19 @@ export default function Dashboard() {
               <ModelStatus status={modelStatus} />
               
               <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col justify-center">
-                <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">System Status</h2>
+                <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                  {t('dashboard.systemStatus', 'System Status')}
+                </h2>
                 <div className="flex items-center gap-3">
                   <div className={`w-3 h-3 rounded-full ${dataStatus?.status === 'ok' ? 'bg-green-500' : 'bg-red-500'}`}></div>
                   <span className={`font-bold ${dataStatus?.status === 'ok' ? 'text-green-700' : 'text-red-700'}`}>
-                    {dataStatus?.status === 'ok' ? 'System Online' : 'System Offline'}
+                    {dataStatus?.status === 'ok' ? t('common.systemOnline', 'System Online') : t('common.systemOffline', 'System Offline')}
                   </span>
                 </div>
                 {dataStatus?.status !== 'ok' && (
-                  <p className="text-xs text-gray-500 mt-2">API server at {import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'} is unreachable.</p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {t('dashboard.unreachableServer', 'API server is unreachable.')}
+                  </p>
                 )}
               </div>
             </div>
@@ -319,25 +319,47 @@ export default function Dashboard() {
             {/* ── Current Risk Summary ────────────────────────────── */}
             {selectedZone && (
               <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-1">Current Risk</h2>
+                <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-1">
+                  {t('dashboard.currentRisk', 'Current Risk')}
+                </h2>
                 <div className="flex items-baseline gap-4">
-                  <span className="text-4xl font-extrabold text-gray-900">{selectedZone.current_risk_score.toFixed(0)} <span className="text-lg text-gray-400 font-medium">/ 100</span></span>
+                  <span className="text-4xl font-extrabold text-gray-900">
+                    {selectedZone.current_risk_score.toFixed(0)} <span className="text-lg text-gray-400 font-medium">/ 100</span>
+                  </span>
                   <span className={`px-3 py-1 rounded-full text-sm font-bold uppercase ${
                     selectedZone.current_risk_level === 'CRITICAL' ? 'bg-red-100 text-red-800' :
                     selectedZone.current_risk_level === 'HIGH' ? 'bg-orange-100 text-orange-800' :
                     selectedZone.current_risk_level === 'MODERATE' ? 'bg-yellow-100 text-yellow-800' :
                     'bg-green-100 text-green-800'
                   }`}>
-                    {selectedZone.current_risk_level}
+                    {t(`riskLevels.${selectedZone.current_risk_level}`, selectedZone.current_risk_level)}
                   </span>
                 </div>
-                <p className="text-gray-600 mt-1 font-medium">{selectedZone.name}, {selectedZone.state}</p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mt-1">
+                  <p className="text-gray-600 font-medium">{selectedZone.name}, {selectedZone.state}</p>
+                  {(selectedZone.current_risk_level === 'CRITICAL' || selectedZone.current_risk_level === 'HIGH') && (
+                    <span className="text-xs font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-200 w-fit">
+                      {t('dashboard.avoidUnstableSlopes', 'Avoid unstable slopes.')}
+                    </span>
+                  )}
+                </div>
               </div>
             )}
 
             {/* ── Map Area ─────────────────────────────────────────── */}
-            <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200 h-[350px] lg:h-[500px] relative z-0">
-              <RiskMap zones={riskZones} onSelectZone={setSelectedZone} selectedZone={selectedZone} />
+            <div className="w-full relative z-0">
+              <RiskMap 
+                zones={riskZones} 
+                onSelectZone={setSelectedZone} 
+                selectedZone={selectedZone} 
+                onWhatIf={(zone) => {
+                  if (zone?.id) {
+                    navigate('/what-if', { state: { selectedZone: zone } });
+                  } else {
+                    alert(t('whatIf.unavailableForLocation', 'What-If analysis is unavailable for this location.'));
+                  }
+                }}
+              />
             </div>
 
             {/* ── Risk Factors ─────────────────────────────────────── */}

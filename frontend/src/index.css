@@ -13,3 +13,10 @@
   height: 100%;
   z-index: 10;
 }
+
+/* Comprehensive Unicode native script font stack */
+.font-native-script {
+  font-family: 'Noto Sans Meetei Mayek', 'Noto Serif Tibetan', 'Noto Sans Tibetan',
+    'Noto Sans Lepcha', 'Noto Sans Limbu', 'Noto Sans Bengali', 'Noto Sans Devanagari',
+    'Nirmala UI', 'Microsoft Himalaya', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}

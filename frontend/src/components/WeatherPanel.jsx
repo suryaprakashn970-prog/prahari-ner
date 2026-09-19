@@ -1,7 +1,9 @@
 import React from 'react';
-import { CloudRain, Thermometer } from 'lucide-react';
+import { CloudRain, Thermometer, AlertTriangle } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function WeatherPanel({ weatherData, selectedZone }) {
+  const { t } = useLanguage();
   if (!weatherData) return null;
   
   // Find weather for selected zone, or default to first
@@ -9,15 +11,19 @@ export default function WeatherPanel({ weatherData, selectedZone }) {
   
   if (!zoneWeather) return null;
 
+  const translatedCondition = t(`weather.conditions.${zoneWeather.forecast}`, zoneWeather.forecast);
+
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 h-full">
-      <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">Weather</h2>
+      <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">
+        {t('weather.title', 'Weather')}
+      </h2>
       
       <div className="flex flex-col gap-4">
         <div className="flex justify-between items-center pb-3 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <CloudRain className="w-5 h-5 text-blue-500" />
-            <span className="text-sm font-medium text-gray-700">24h Rainfall</span>
+            <span className="text-sm font-medium text-gray-700">{t('weather.rainfall24h', '24h Rainfall')}</span>
           </div>
           <span className="text-sm font-bold text-gray-900">{zoneWeather.rainfall_24h} mm</span>
         </div>
@@ -25,7 +31,7 @@ export default function WeatherPanel({ weatherData, selectedZone }) {
         <div className="flex justify-between items-center pb-3 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <CloudRain className="w-5 h-5 text-indigo-500" />
-            <span className="text-sm font-medium text-gray-700">72h Rainfall</span>
+            <span className="text-sm font-medium text-gray-700">{t('weather.rainfall72h', '72h Rainfall')}</span>
           </div>
           <span className="text-sm font-bold text-gray-900">{zoneWeather.rainfall_72h} mm</span>
         </div>
@@ -33,13 +39,22 @@ export default function WeatherPanel({ weatherData, selectedZone }) {
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Thermometer className="w-5 h-5 text-orange-500" />
-            <span className="text-sm font-medium text-gray-700">Temperature</span>
+            <span className="text-sm font-medium text-gray-700">{t('weather.temperature', 'Temperature')}</span>
           </div>
           <span className="text-sm font-bold text-gray-900">{zoneWeather.temperature}°C</span>
         </div>
+
+        {zoneWeather.rainfall_24h >= 100 && (
+          <div className="p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-900 font-semibold flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+            <span>{t('weather.heavyRainfallDetected', 'Heavy rainfall detected.')}</span>
+          </div>
+        )}
         
-        <div className="mt-2 bg-blue-50 rounded p-2 text-center">
-          <span className="text-xs font-semibold text-blue-800 uppercase">Forecast: {zoneWeather.forecast}</span>
+        <div className="mt-1 bg-blue-50 rounded p-2 text-center">
+          <span className="text-xs font-semibold text-blue-800 uppercase">
+            {t('weather.forecast', 'Forecast')}: {translatedCondition}
+          </span>
         </div>
       </div>
     </div>

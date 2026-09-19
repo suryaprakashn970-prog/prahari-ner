@@ -11,6 +11,83 @@ export const NER_STATES = [
   "Sikkim"
 ];
 
+// Centralized State -> Language dataset with English and Native/Local scripts
+export const NER_STATE_LANGUAGES = [
+  {
+    state: "Arunachal Pradesh",
+    languages: [
+      { englishName: "English", nativeName: "English" },
+      { englishName: "Hindi", nativeName: "हिन्दी" },
+      { englishName: "Many tribal languages", nativeName: "Multiple indigenous languages" }
+    ]
+  },
+  {
+    state: "Assam",
+    languages: [
+      { englishName: "Assamese", nativeName: "অসমীয়া" },
+      { englishName: "Bengali", nativeName: "বাংলা" },
+      { englishName: "Bodo", nativeName: "बड़ो" }
+    ]
+  },
+  {
+    state: "Manipur",
+    languages: [
+      { englishName: "Meitei (Manipuri)", nativeName: "ꯃꯤꯇꯩ ꯂꯣꯟ" }
+    ]
+  },
+  {
+    state: "Meghalaya",
+    languages: [
+      { englishName: "English", nativeName: "English" },
+      { englishName: "Khasi", nativeName: "খাসি" },
+      { englishName: "Garo", nativeName: "Garo" }
+    ]
+  },
+  {
+    state: "Mizoram",
+    languages: [
+      { englishName: "English", nativeName: "English" },
+      { englishName: "Mizo", nativeName: "Mizo" }
+    ]
+  },
+  {
+    state: "Nagaland",
+    languages: [
+      { englishName: "English", nativeName: "English" },
+      { englishName: "Nagamese", nativeName: "Nagamese" }
+    ]
+  },
+  {
+    state: "Tripura",
+    languages: [
+      { englishName: "Bengali", nativeName: "বাংলা" },
+      { englishName: "Kokborok", nativeName: "Kokborok" }
+    ]
+  },
+  {
+    state: "Sikkim",
+    languages: [
+      { englishName: "Nepali", nativeName: "नेपाली" },
+      { englishName: "Sikkimese (Bhutia)", nativeName: "འབྲས་ལྗོངས་སྐད་" },
+      { englishName: "Lepcha", nativeName: "ᰛᰩᰵᰶᰣ" },
+      { englishName: "Limbu", nativeName: "ᤕᤠᤰᤌᤠᤧ" }
+    ]
+  }
+];
+
+// Map lookup: State Name -> array of { englishName, nativeName }
+export const NER_LANGUAGES_MAP = Object.fromEntries(
+  NER_STATE_LANGUAGES.map((item) => [item.state, item.languages])
+);
+
+// Backward-compatible string-array mapping: State Name -> array of English names
+export const NER_LANGUAGES = Object.fromEntries(
+  NER_STATE_LANGUAGES.map((item) => [
+    item.state,
+    item.languages.map((l) => l.englishName)
+  ])
+);
+
 // Initial view bounds covering the entire 8 NER states
 // South-West [21.5, 88.0], North-East [29.5, 97.5]
 export const NER_BOUNDS = [

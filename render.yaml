@@ -7,13 +7,11 @@ services:
     envVars:
       - key: DATABASE_URL
         value: sqlite:///./prahari.db
-      - key: FRONTEND_URL
-        value: "https://prahari-frontend-6wa3.onrender.com"
   
   - type: static
     name: prahari-frontend
     buildCommand: "cd frontend && npm install && npm run build"
     staticPublishPath: "./frontend/dist"
     envVars:
-      - key: VITE_API_URL
-        value: "https://prahari-backend-4via.onrender.com"
+      - key: VITE_API_BASE_URL
+        value: "https://prahari-backend.onrender.com"

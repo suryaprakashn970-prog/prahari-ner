@@ -1,12 +1,32 @@
 import React from 'react';
 import { FileText, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function FieldReports({ reports }) {
+  const { t } = useLanguage();
+
+  const getStatusBadge = (status) => {
+    const isVerified = (status || '').toLowerCase() === 'verified';
+    const text = isVerified ? t('reports.verified', 'VERIFIED') : t('reports.pending', 'PENDING');
+    return (
+      <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] uppercase font-bold ${
+        isVerified ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+      }`}>
+        {isVerified ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+        {text}
+      </span>
+    );
+  };
+
   if (!reports || reports.length === 0) {
     return (
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">Field Reports</h2>
-        <div className="text-sm text-gray-500 text-center">No field reports available.</div>
+        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">
+          {t('reports.title', 'Field Reports')}
+        </h2>
+        <div className="text-sm text-gray-500 text-center">
+          {t('reports.noFieldReports', 'No field reports available.')}
+        </div>
       </div>
     );
   }
@@ -15,7 +35,7 @@ export default function FieldReports({ reports }) {
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 h-full">
       <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-2">
         <FileText className="w-4 h-4 text-blue-500" />
-        Recent Field Reports
+        {t('reports.recentFieldReports', 'Recent Field Reports')}
       </h2>
       
       <div className="flex flex-col gap-3">
@@ -26,17 +46,12 @@ export default function FieldReports({ reports }) {
                 <div className="font-bold text-sm text-gray-800">{report.location}</div>
                 <div className="text-xs text-gray-500">{new Date(report.created_at).toLocaleDateString()}</div>
               </div>
-              <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] uppercase font-bold ${
-                report.status === 'Verified' ? 'bg-green-100 text-green-700' :
-                report.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                'bg-red-100 text-red-700'
-              }`}>
-                {report.status === 'Verified' ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
-                {report.status}
-              </span>
+              {getStatusBadge(report.status)}
             </div>
             
-            <div className="text-xs font-semibold text-gray-700 mb-1">{report.report_type}</div>
+            <div className="text-xs font-semibold text-gray-700 mb-1">
+              {t(`reports.hazardNames.${report.report_type}`, report.report_type)}
+            </div>
             <p className="text-sm text-gray-600 line-clamp-2">{report.description}</p>
           </div>
         ))}

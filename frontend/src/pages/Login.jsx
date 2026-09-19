@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, AlertCircle, PhoneCall } from 'lucide-react';
+import { Shield, AlertCircle, PhoneCall, Globe } from 'lucide-react';
 import { auth } from '../services/firebase';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import {
   signInWithPopup,
   GoogleAuthProvider,
@@ -14,6 +15,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading: authLoading } = useAuth();
+  const { selectedLanguage, setSelectedLanguage, t } = useLanguage();
 
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
@@ -86,7 +88,7 @@ export default function Login() {
         // reCAPTCHA solved
       },
       'expired-callback': () => {
-        setError('reCAPTCHA challenge expired. Please click Send SMS OTP again.');
+        setError(t('login.recaptchaExpired', 'reCAPTCHA challenge expired. Please click Send SMS OTP again.'));
         resetRecaptchaState();
       },
     });
@@ -98,7 +100,7 @@ export default function Login() {
   // Google Sign-In with real Firebase provider
   const handleGoogleSignIn = async () => {
     if (!auth) {
-      setError('Google Sign-In is not configured yet. Add the Firebase configuration to frontend/.env.');
+      setError(t('login.firebaseNotConfiguredSub', 'Firebase Authentication is not configured yet.'));
       return;
     }
 
@@ -114,17 +116,13 @@ export default function Login() {
     } catch (err) {
       console.error('Google Sign-In error:', err);
       if (err.code === 'auth/popup-closed-by-user') {
-        setError('Sign-in cancelled. Popup was closed before completing.');
+        setError(t('login.googleCancelled', 'Sign-in cancelled. Popup was closed before completing.'));
       } else if (err.code === 'auth/popup-blocked') {
-        setError('Popup was blocked by your browser. Please allow popups for this site.');
-      } else if (err.code === 'auth/unauthorized-domain') {
-        setError('This domain is not authorized for Google Sign-In in Firebase Console (Authentication > Settings > Authorized domains).');
+        setError(t('login.googleBlocked', 'Popup was blocked by your browser. Please allow popups for this site.'));
       } else if (err.code === 'auth/network-request-failed') {
-        setError('Network error during authentication. Please check your internet connection.');
-      } else if (err.code === 'auth/operation-not-allowed') {
-        setError('Google Sign-In is not enabled in Firebase Console.');
+        setError(t('login.networkError', 'Network error during authentication. Please check your internet connection.'));
       } else {
-        setError(err.message || 'Authentication failed. Please try again.');
+        setError(err.message || t('login.authFailed', 'Authentication failed. Please try again.'));
       }
     } finally {
       setLoading(false);
@@ -135,7 +133,6 @@ export default function Login() {
   const handlePhoneChange = (e) => {
     let raw = e.target.value.trim();
 
-    // Strip +91, 91, or leading zero if pasted/typed with country code
     if (raw.startsWith('+91')) {
       raw = raw.slice(3).trim();
     } else if (raw.startsWith('+')) {
@@ -156,26 +153,24 @@ export default function Login() {
     if (e && e.preventDefault) e.preventDefault();
 
     if (!auth) {
-      setError('Phone authentication is not configured yet. Add the Firebase configuration to frontend/.env.');
+      setError(t('login.firebaseNotConfiguredSub', 'Firebase configuration required.'));
       return;
     }
 
-    // Phone number validation
     const cleanDigits = phone.replace(/\D/g, '');
     if (!cleanDigits) {
-      setError('Please enter your 10-digit mobile number.');
+      setError(t('login.enterTenDigits', 'Please enter your 10-digit mobile number.'));
       return;
     }
     if (cleanDigits.length !== 10) {
-      setError('Please enter a complete 10-digit Indian mobile number (+91XXXXXXXXXX).');
+      setError(t('login.completeTenDigits', 'Please enter a complete 10-digit Indian mobile number (+91XXXXXXXXXX).'));
       return;
     }
     if (!/^[6-9]\d{9}$/.test(cleanDigits)) {
-      setError('Please enter a valid Indian mobile number starting with 6, 7, 8, or 9.');
+      setError(t('login.validIndianNumber', 'Please enter a valid Indian mobile number starting with 6, 7, 8, or 9.'));
       return;
     }
 
-    // Prevent duplicate clicks
     if (sendingOtp || loading) return;
 
     setSendingOtp(true);
@@ -199,23 +194,20 @@ export default function Login() {
       console.error('Phone Sign-In error:', err);
       const errMsg = err?.message || '';
 
-      // Reset reCAPTCHA state so next attempt starts with a clean verifier
       resetRecaptchaState();
 
-      if (err.code === 'auth/operation-not-allowed') {
-        setError('Phone Authentication is not enabled or the SMS region is restricted in Firebase Console (Authentication > Sign-in method > Phone).');
-      } else if (errMsg.includes('already been rendered') || err.code === 'auth/captcha-check-failed') {
-        setError('reCAPTCHA security challenge reset. Please verify your phone number and click Send SMS OTP again.');
+      if (errMsg.includes('already been rendered') || err.code === 'auth/captcha-check-failed') {
+        setError(t('login.recaptchaResetNotice', 'reCAPTCHA security challenge reset. Please verify your phone number and click Send SMS OTP again.'));
       } else if (err.code === 'auth/invalid-phone-number') {
-        setError('Invalid phone number format. Please check the 10-digit number and try again.');
+        setError(t('login.invalidPhoneFormat', 'Invalid phone number format. Please check the 10-digit number and try again.'));
       } else if (err.code === 'auth/too-many-requests') {
-        setError('Too many attempts. Please wait a few minutes before trying again.');
+        setError(t('login.tooManyAttempts', 'Too many attempts. Please wait a few minutes before trying again.'));
       } else if (err.code === 'auth/quota-exceeded') {
-        setError('Daily SMS quota exceeded in Firebase project. Please use Google Sign-In.');
+        setError(t('login.smsQuotaExceeded', 'Daily SMS quota exceeded in Firebase project. Please use Google Sign-In.'));
       } else if (err.code === 'auth/network-request-failed') {
-        setError('Network connection failed. Please check your internet connection.');
+        setError(t('login.networkError', 'Network connection failed. Please check your internet connection.'));
       } else {
-        setError(err.message || 'Failed to send SMS OTP. Please check the number and try again.');
+        setError(err.message || t('login.authFailed', 'Failed to send SMS OTP. Please check the number and try again.'));
       }
     } finally {
       setSendingOtp(false);
@@ -229,13 +221,13 @@ export default function Login() {
 
     const confirmation = confirmationResultRef.current || window.confirmationResult;
     if (!confirmation) {
-      setError('Verification session expired. Please request a new OTP.');
+      setError(t('login.otpExpired', 'Verification session expired. Please request a new OTP.'));
       setStep(1);
       return;
     }
 
     if (otp.length !== 6) {
-      setError('Please enter the complete 6-digit OTP code.');
+      setError(t('login.invalidOtpCode', 'Please enter the complete 6-digit OTP code.'));
       return;
     }
 
@@ -250,18 +242,17 @@ export default function Login() {
     } catch (err) {
       console.error('OTP confirmation error:', err);
       if (err.code === 'auth/invalid-verification-code') {
-        setError('Invalid OTP code. Please check and enter the 6-digit code again.');
+        setError(t('login.invalidOtpCode', 'Invalid OTP code. Please check and enter the 6-digit code again.'));
       } else if (err.code === 'auth/code-expired') {
-        setError('OTP code has expired. Please request a new code.');
+        setError(t('login.otpExpired', 'OTP code has expired. Please request a new code.'));
       } else {
-        setError(err.message || 'OTP verification failed.');
+        setError(err.message || t('login.otpVerificationFailed', 'OTP verification failed.'));
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // Navigate back to phone input step, keeping phone number editable
   const handleChangeNumber = () => {
     setStep(1);
     setOtp('');
@@ -269,7 +260,6 @@ export default function Login() {
     resetRecaptchaState();
   };
 
-  // Resend OTP to existing number
   const handleResendOtp = async () => {
     if (sendingOtp || loading) return;
     setError('');
@@ -278,19 +268,46 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative">
+      {/* Quick Language Selector */}
+      <div className="absolute top-6 right-6 flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg p-1 shadow-xs">
+        <Globe className="w-4 h-4 text-gray-500 ml-1" />
+        <button
+          type="button"
+          onClick={() => setSelectedLanguage('en')}
+          className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
+            selectedLanguage === 'en'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          English
+        </button>
+        <button
+          type="button"
+          onClick={() => setSelectedLanguage('hi')}
+          className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
+            selectedLanguage === 'hi'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          हिन्दी
+        </button>
+      </div>
+
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <Shield className="mx-auto h-12 w-12 text-blue-600" />
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
           PRAHARI-NER
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          AI-Based Landslide Early Warning & Risk Monitoring
+          {t('login.subtitle')}
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-xl sm:px-10 border border-gray-100">
+        <div className="bg-white py-8 px-4 shadow-sm sm:rounded-xl sm:px-10 border border-gray-100">
           {error && (
             <div className="mb-4 bg-red-50 text-red-700 p-3 rounded-lg text-sm flex items-start gap-2 border border-red-200">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -300,9 +317,9 @@ export default function Login() {
 
           {!auth && (
             <div className="mb-6 text-sm text-center text-amber-900 bg-amber-50 border border-amber-300 p-4 rounded-md">
-              <p className="font-semibold mb-1">Firebase Authentication Not Configured</p>
+              <p className="font-semibold mb-1">{t('login.firebaseNotConfigured')}</p>
               <p className="text-xs text-amber-800">
-                Add the Firebase configuration to frontend/.env or Render environment variables to activate real authentication.
+                {t('login.firebaseNotConfiguredSub')}
               </p>
             </div>
           )}
@@ -334,7 +351,7 @@ export default function Login() {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                   />
                 </svg>
-                {loading && !sendingOtp ? 'Signing in...' : 'Continue with Google'}
+                {loading && !sendingOtp ? t('login.signingIn') : t('login.continueWithGoogle')}
               </button>
 
               <div className="relative mb-6">
@@ -343,7 +360,7 @@ export default function Login() {
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                   <span className="px-2 bg-white text-gray-500 font-bold tracking-wider">
-                    Or Sign in with Phone OTP
+                    {t('login.orPhoneOtp')}
                   </span>
                 </div>
               </div>
@@ -353,7 +370,7 @@ export default function Login() {
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label htmlFor="phone-input" className="block text-sm font-semibold text-gray-700">
-                      Mobile Phone Number
+                      {t('login.mobileNumber')}
                     </label>
                     <span className="text-[11px] text-gray-500 font-mono">
                       +91XXXXXXXXXX
@@ -373,7 +390,7 @@ export default function Login() {
                       onChange={handlePhoneChange}
                       disabled={loading || sendingOtp}
                       className="flex-1 min-w-0 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none disabled:bg-gray-50 disabled:text-gray-500"
-                      placeholder="Enter 10-digit number (e.g. 9876543210)"
+                      placeholder={t('login.phonePlaceholder')}
                     />
                     {phone && !loading && !sendingOtp && (
                       <button
@@ -390,7 +407,7 @@ export default function Login() {
                     )}
                   </div>
                   <p className="text-[11px] text-gray-500 mt-1.5">
-                    Enter any 10-digit Indian phone number. You can change it anytime before sending.
+                    {t('login.phoneHelp')}
                   </p>
                 </div>
 
@@ -399,7 +416,7 @@ export default function Login() {
                   disabled={!auth || phone.length < 10 || loading || sendingOtp}
                   className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
-                  {sendingOtp ? 'Sending SMS OTP...' : 'Send SMS OTP'}
+                  {sendingOtp ? t('login.sendingSmsOtp') : t('login.sendSmsOtp')}
                 </button>
               </form>
             </>
@@ -411,10 +428,10 @@ export default function Login() {
                   <PhoneCall className="w-6 h-6" />
                 </div>
                 <h3 className="text-base font-bold text-gray-900">
-                  Verify Phone Number
+                  {t('login.verifyPhoneNumber')}
                 </h3>
                 <p className="text-xs text-gray-500 mt-1">
-                  Enter the 6-digit verification code sent to:
+                  {t('login.enterOtpCode')}
                 </p>
                 <div className="inline-flex items-center gap-1.5 mt-1 font-mono font-bold text-sm text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
                   +91 {phone}
@@ -444,7 +461,7 @@ export default function Login() {
                 disabled={otp.length !== 6 || loading}
                 className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 transition-colors cursor-pointer"
               >
-                {loading ? 'Verifying OTP...' : 'Verify & Continue'}
+                {loading ? t('login.verifyingOtp') : t('login.verifyAndContinue')}
               </button>
 
               <div className="flex justify-between items-center text-xs text-blue-600 pt-1">
@@ -454,7 +471,7 @@ export default function Login() {
                   disabled={loading || sendingOtp}
                   className="hover:underline font-semibold cursor-pointer disabled:opacity-50"
                 >
-                  {sendingOtp ? 'Resending...' : 'Resend SMS OTP'}
+                  {sendingOtp ? t('login.resendingOtp') : t('login.resendOtp')}
                 </button>
                 <button
                   type="button"
@@ -462,7 +479,7 @@ export default function Login() {
                   disabled={loading}
                   className="hover:underline font-semibold cursor-pointer disabled:opacity-50 flex items-center gap-1"
                 >
-                  ← Edit Phone Number
+                  {t('login.editPhoneNumber')}
                 </button>
               </div>
             </form>
@@ -476,32 +493,32 @@ export default function Login() {
           {/* Direct Emergency Contacts (No login required) */}
           <div className="mt-8 pt-6 border-t border-gray-200 text-center">
             <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-3">
-              Direct Emergency Contacts (No Login Required)
+              {t('emergency.directHelplinesTitle')}
             </p>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <a
                 href="tel:112"
                 className="flex items-center justify-center gap-1.5 py-2 px-3 bg-red-50 text-red-700 rounded-md font-bold hover:bg-red-100 border border-red-200 transition-colors"
               >
-                <PhoneCall className="w-3.5 h-3.5" /> 🚨 Emergency 112
+                <PhoneCall className="w-3.5 h-3.5" /> 🚨 {t('emergency.primaryBadge')} 112
               </a>
               <a
                 href="tel:108"
                 className="flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-50 text-emerald-700 rounded-md font-bold hover:bg-emerald-100 border border-emerald-200 transition-colors"
               >
-                <PhoneCall className="w-3.5 h-3.5" /> 🚑 Ambulance 108
+                <PhoneCall className="w-3.5 h-3.5" /> 🚑 {t('emergency.ambulance')} 108
               </a>
               <a
                 href="tel:101"
                 className="flex items-center justify-center gap-1.5 py-2 px-3 bg-amber-50 text-amber-700 rounded-md font-bold hover:bg-amber-100 border border-amber-200 transition-colors"
               >
-                <PhoneCall className="w-3.5 h-3.5" /> 🚒 Fire 101
+                <PhoneCall className="w-3.5 h-3.5" /> 🚒 {t('emergency.fire')} 101
               </a>
               <a
                 href="tel:100"
                 className="flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-50 text-blue-700 rounded-md font-bold hover:bg-blue-100 border border-blue-200 transition-colors"
               >
-                <PhoneCall className="w-3.5 h-3.5" /> 👮 Police 100
+                <PhoneCall className="w-3.5 h-3.5" /> 👮 {t('emergency.police')} 100
               </a>
             </div>
           </div>

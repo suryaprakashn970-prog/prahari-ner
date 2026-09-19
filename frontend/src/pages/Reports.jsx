@@ -1,8 +1,9 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import PageLayout from "../components/PageLayout";
 import FieldReports from "../components/FieldReports";
 import api from "../services/api";
 import LoadingState from "../components/LoadingState";
+import { useLanguage } from "../context/LanguageContext";
 
 // ── NER State → District map ─────────────────────────────────
 const STATE_DISTRICTS = {
@@ -51,18 +52,6 @@ const STATE_DISTRICTS = {
 };
 const STATES = Object.keys(STATE_DISTRICTS);
 
-// ── Validation ───────────────────────────────────────────────
-function validateForm({ state, district, location, report_type, description, reporter_id }) {
-  const errors = {};
-  if (!state)               errors.state       = "State is required.";
-  if (!district)            errors.district    = "District is required.";
-  if (!location.trim())     errors.location    = "Location / Village / Road name is required.";
-  if (!report_type.trim())  errors.report_type = "Report type is required.";
-  if (!description.trim())  errors.description = "Description is required.";
-  if (!reporter_id.trim())  errors.reporter_id = "Reporter ID is required.";
-  return errors;
-}
-
 function format422Detail(detail) {
   if (!detail) return "Validation failed.";
   if (typeof detail === "string") return detail;
@@ -80,26 +69,26 @@ function FieldError({ msg }) {
 }
 
 // ── GPS status indicator ─────────────────────────────────────
-function GpsStatus({ status, coords }) {
+function GpsStatus({ status, coords, t }) {
   if (status === "acquired")
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", borderRadius: 6, background: "#d1fae5", border: "1px solid #6ee7b7", fontSize: 12, color: "#065f46", marginTop: 6 }}>
         <span>📍</span>
-        <span>GPS acquired — coordinates will be stored for mapping ({coords.lat.toFixed(4)}, {coords.lng.toFixed(4)})</span>
+        <span>{t('reports.gpsAcquired', 'GPS acquired — coordinates will be stored for mapping')} ({coords.lat?.toFixed(4)}, {coords.lng?.toFixed(4)})</span>
       </div>
     );
   if (status === "denied")
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", borderRadius: 6, background: "#fef9c3", border: "1px solid #fde047", fontSize: 12, color: "#854d0e", marginTop: 6 }}>
         <span>⚠️</span>
-        <span>Location permission denied — report will still be submitted using State + District.</span>
+        <span>{t('reports.gpsDenied', 'Location permission denied — report will still be submitted using State + District.')}</span>
       </div>
     );
   if (status === "loading")
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", borderRadius: 6, background: "#eff6ff", border: "1px solid #bfdbfe", fontSize: 12, color: "#1e40af", marginTop: 6 }}>
         <span>⏳</span>
-        <span>Detecting your location…</span>
+        <span>{t('reports.detectingLocation', 'Detecting your location…')}</span>
       </div>
     );
   return null;
@@ -107,6 +96,7 @@ function GpsStatus({ status, coords }) {
 
 // ── Main component ───────────────────────────────────────────
 export default function Reports() {
+  const { t } = useLanguage();
   const [reports, setReports]         = useState([]);
   const [loading, setLoading]         = useState(true);
   const [submitting, setSubmitting]   = useState(false);
@@ -126,6 +116,7 @@ export default function Reports() {
   // Report fields
   const [reportType, setReportType]   = useState("Landslide");
   const [description, setDescription] = useState("");
+  const [image, setImage]             = useState(""); // base64 string
   const [reporterId, setReporterId]   = useState("field_agent");
 
   // Districts update when state changes
@@ -167,18 +158,27 @@ export default function Reports() {
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
 
+  // ── Validation ───────────────────────────────────────────
+  const validateForm = () => {
+    const errors = {};
+    if (!state)               errors.state       = t('reports.validation.stateRequired', "State is required.");
+    if (!district)            errors.district    = t('reports.validation.districtRequired', "District is required.");
+    if (!location.trim())     errors.location    = t('reports.validation.locationRequired', "Location / Village / Road name is required.");
+    if (!reportType.trim())  errors.report_type = t('reports.validation.reportTypeRequired', "Report type is required.");
+    if (!reporterId.trim())  errors.reporter_id = t('reports.validation.reporterIdRequired', "Reporter ID is required.");
+    return errors;
+  };
+
   // ── Submit ───────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitError("");
     setSubmitSuccess(false);
 
-    const errors = validateForm({ state, district, location, report_type: reportType, description, reporter_id: reporterId });
+    const errors = validateForm();
     if (Object.keys(errors).length > 0) { setFieldErrors(errors); return; }
     setFieldErrors({});
 
-    // Build payload — latitude/longitude are Optional in backend schema
-    // Only include when GPS was successfully acquired
     const payload = {
       state,
       district,
@@ -187,6 +187,7 @@ export default function Reports() {
       longitude:   gpsCoords ? gpsCoords.lng : null,
       report_type: reportType,
       description: description.trim(),
+      image:       image || null,
       reporter_id: reporterId.trim(),
     };
 
@@ -194,10 +195,9 @@ export default function Reports() {
     try {
       await api.createReport(payload);
       setSubmitSuccess(true);
-      // Clear form
       setState(""); setDistrict(""); setLocation("");
       setGpsCoords(null); setGpsStatus("idle");
-      setReportType("Landslide"); setDescription(""); setReporterId("field_agent");
+      setReportType("Landslide"); setDescription(""); setImage(""); setReporterId("field_agent");
       fetchReports();
       setTimeout(() => setSubmitSuccess(false), 5000);
     } catch (err) {
@@ -209,7 +209,7 @@ export default function Reports() {
         else if (status === 500) setSubmitError("Server error (500). Check FastAPI logs.");
         else setSubmitError(`Submission failed (HTTP ${status}): ${format422Detail(detail)}`);
       } else if (err.request) {
-        setSubmitError("Cannot reach backend. Is the FastAPI server running at http://127.0.0.1:8000?");
+        setSubmitError(t('errors.backendUnavailable', "Cannot reach backend. Is the FastAPI server running at http://127.0.0.1:8000?"));
       } else {
         setSubmitError(`Unexpected error: ${err.message}`);
       }
@@ -218,7 +218,20 @@ export default function Reports() {
     }
   };
 
-  const inputCls = "w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
+  const inputCls = "w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white";
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImage(reader.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setImage("");
+    }
+  };
 
   return (
     <PageLayout>
@@ -226,14 +239,16 @@ export default function Reports() {
 
         {/* ── Form ─────────────────────────────────────────── */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h2 className="text-lg font-bold text-gray-800 mb-1">Submit Field Report</h2>
+          <h2 className="text-lg font-bold text-gray-800 mb-1">
+            {t('reports.submitFieldReport', 'Submit Field Report')}
+          </h2>
           <p className="text-sm text-gray-500 mb-4">
-            Report a landslide, road blockage, or hazard. No technical knowledge required.
+            {t('reports.submitSub', 'Report a landslide, road blockage, or hazard. No technical knowledge required.')}
           </p>
 
           {submitSuccess && (
             <div style={{ background: "#d1fae5", border: "1px solid #6ee7b7", borderRadius: 6, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#065f46", fontWeight: 600 }}>
-              ✓ Report submitted and saved successfully. It will appear in the list below.
+              {t('reports.submittedSuccessfully', '✓ Report submitted and saved successfully. It will appear in the list below.')}
             </div>
           )}
           {submitError && (
@@ -247,10 +262,10 @@ export default function Reports() {
             {/* ── State ────────────────────────────────────── */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                State <span style={{ color: "#dc2626" }}>*</span>
+                {t('reports.state', 'State')} <span style={{ color: "#dc2626" }}>*</span>
               </label>
               <select value={state} onChange={handleStateChange} className={inputCls}>
-                <option value="">— Select State —</option>
+                <option value="">{t('reports.selectState', '— Select State —')}</option>
                 {STATES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
               <FieldError msg={fieldErrors.state} />
@@ -259,10 +274,12 @@ export default function Reports() {
             {/* ── District ─────────────────────────────────── */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                District <span style={{ color: "#dc2626" }}>*</span>
+                {t('reports.district', 'District')} <span style={{ color: "#dc2626" }}>*</span>
               </label>
               <select value={district} onChange={(e) => setDistrict(e.target.value)} className={inputCls} disabled={!state}>
-                <option value="">— {state ? "Select District" : "Select a state first"} —</option>
+                <option value="">
+                  {state ? t('reports.selectDistrict', '— Select District —') : t('reports.selectStateFirst', '— Select a state first —')}
+                </option>
                 {districts.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
               <FieldError msg={fieldErrors.district} />
@@ -271,14 +288,14 @@ export default function Reports() {
             {/* ── Location / Village / Road ─────────────────── */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Village / Road / Landmark <span style={{ color: "#dc2626" }}>*</span>
+                {t('reports.location', 'Location / Village / Road Name')} <span style={{ color: "#dc2626" }}>*</span>
               </label>
               <input
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 className={inputCls}
-                placeholder="e.g. NH-15 near Bomdila"
+                placeholder={t('reports.locationPlaceholder', 'e.g. NH-15 near Bomdila')}
               />
               <FieldError msg={fieldErrors.location} />
             </div>
@@ -286,8 +303,10 @@ export default function Reports() {
             {/* ── GPS (optional) ────────────────────────────── */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                GPS Coordinates{" "}
-                <span style={{ fontWeight: 400, color: "#6b7280", fontSize: 11 }}>(optional — improves map accuracy)</span>
+                {t('reports.gpsCoordinates', 'GPS Coordinates')}{" "}
+                <span style={{ fontWeight: 400, color: "#6b7280", fontSize: 11 }}>
+                  {t('reports.gpsOptional', '(optional — improves map accuracy)')}
+                </span>
               </label>
               <button
                 type="button"
@@ -303,23 +322,27 @@ export default function Reports() {
                   color: gpsStatus === "acquired" ? "#065f46" : "#1d4ed8",
                 }}
               >
-                {gpsStatus === "loading" ? "⏳ Detecting…" : gpsStatus === "acquired" ? "📍 Location Acquired" : "📍 Use My Location"}
+                {gpsStatus === "loading"
+                  ? t('reports.detectingLocation', '⏳ Detecting…')
+                  : gpsStatus === "acquired"
+                  ? t('reports.locationAcquired', '📍 Location Acquired')
+                  : t('reports.useMyLocation', '📍 Use My Location')}
               </button>
-              <GpsStatus status={gpsStatus} coords={gpsCoords || {}} />
+              <GpsStatus status={gpsStatus} coords={gpsCoords || {}} t={t} />
             </div>
 
             {/* ── Report Type ───────────────────────────────── */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Type of Hazard <span style={{ color: "#dc2626" }}>*</span>
+                {t('reports.hazardType', 'Type of Hazard')} <span style={{ color: "#dc2626" }}>*</span>
               </label>
               <select value={reportType} onChange={(e) => setReportType(e.target.value)} className={inputCls}>
-                <option value="Landslide">🏔 Landslide</option>
-                <option value="Road Blockage">🚧 Road Blockage</option>
-                <option value="Crack">🪨 Slope / Ground Crack</option>
-                <option value="Flooding">🌊 Flooding</option>
-                <option value="Debris Flow">⚠️ Debris / Mud Flow</option>
-                <option value="Other">📋 Other</option>
+                <option value="Landslide">{t('reports.hazards.landslide', '🏔 Landslide')}</option>
+                <option value="Road Blockage">{t('reports.hazards.roadBlockage', '🚧 Road Blockage')}</option>
+                <option value="Crack">{t('reports.hazards.crack', '🪨 Slope / Ground Crack')}</option>
+                <option value="Flooding">{t('reports.hazards.flooding', '🌊 Flooding')}</option>
+                <option value="Debris Flow">{t('reports.hazards.debrisFlow', '⚠️ Debris / Mud Flow')}</option>
+                <option value="Other">{t('reports.hazards.other', '📋 Other')}</option>
               </select>
               <FieldError msg={fieldErrors.report_type} />
             </div>
@@ -327,29 +350,48 @@ export default function Reports() {
             {/* ── Description ──────────────────────────────── */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                What did you observe? <span style={{ color: "#dc2626" }}>*</span>
+                {t('reports.description', 'What did you observe?')} <span style={{ fontWeight: 400, color: "#6b7280", fontSize: 11 }}>(optional)</span>
               </label>
               <textarea
                 rows={4}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className={inputCls}
-                placeholder="Describe what you saw — e.g. large cracks on slope above NH-13, soil movement, trees tilting, road partially blocked..."
+                placeholder={t('reports.descriptionPlaceholder', 'Describe what you saw — e.g. large cracks on slope above NH-13, soil movement, trees tilting, road partially blocked...')}
               />
               <FieldError msg={fieldErrors.description} />
+            </div>
+
+            {/* ── Image (optional) ─────────────────────────── */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('reports.image', 'Photo / Image')} <span style={{ fontWeight: 400, color: "#6b7280", fontSize: 11 }}>(optional)</span>
+              </label>
+              <input
+                type="file"
+                accept="image/jpeg, image/png, image/webp"
+                onChange={handleImageChange}
+                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              {image && (
+                <div className="mt-3">
+                  <p className="text-xs text-gray-500 mb-1">{t('reports.imagePreview', 'Preview:')}</p>
+                  <img src={image} alt="Preview" className="h-32 object-cover rounded border border-gray-200" />
+                </div>
+              )}
             </div>
 
             {/* ── Reporter ID ───────────────────────────────── */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Your Name / Officer ID <span style={{ color: "#dc2626" }}>*</span>
+                {t('reports.reporterId', 'Your Name / Officer ID')} <span style={{ color: "#dc2626" }}>*</span>
               </label>
               <input
                 type="text"
                 value={reporterId}
                 onChange={(e) => setReporterId(e.target.value)}
                 className={inputCls}
-                placeholder="e.g. Rajan Tashi or officer_arunachal_04"
+                placeholder={t('reports.reporterIdPlaceholder', 'e.g. Rajan Tashi or officer_arunachal_04')}
               />
               <FieldError msg={fieldErrors.reporter_id} />
             </div>
@@ -357,9 +399,9 @@ export default function Reports() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-blue-600 text-white font-semibold py-2.5 px-4 rounded hover:bg-blue-700 disabled:opacity-50 text-sm"
+              className="w-full bg-blue-600 text-white font-semibold py-2.5 px-4 rounded hover:bg-blue-700 disabled:opacity-50 text-sm cursor-pointer shadow-xs transition-colors"
             >
-              {submitting ? "Submitting Report…" : "Submit Report"}
+              {submitting ? t('reports.submittingReport', 'Submitting Report…') : t('reports.submitReport', 'Submit Report')}
             </button>
 
           </form>
@@ -368,12 +410,12 @@ export default function Reports() {
         {/* ── Reports List ─────────────────────────────────── */}
         <div>
           <h2 className="text-lg font-bold text-gray-800 mb-4">
-            Submitted Reports
+            {t('reports.submittedReportsTitle', 'Submitted Reports')}
             <span style={{ fontSize: 13, fontWeight: 400, color: "#6b7280", marginLeft: 8 }}>
-              ({reports.length} total)
+              ({reports.length} {t('reports.total', 'total')})
             </span>
           </h2>
-          {loading ? <LoadingState /> : <FieldReports reports={reports} />}
+          {loading ? <LoadingState message={t('loading.reports', 'Loading reports...')} /> : <FieldReports reports={reports} />}
         </div>
 
       </div>

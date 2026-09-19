@@ -50,9 +50,10 @@ class FieldReport(Base):
     # GPS coordinates - optional (set by browser geolocation, null if unavailable)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
-    report_type = Column(String)
-    description = Column(Text)
-    reporter_id = Column(String)                     # firebase uid or 'field_agent'
+    report_type = Column(String, default="Observation")
+    description = Column(Text, nullable=True)
+    image_url = Column(Text, nullable=True)
+    reporter_id = Column(String, default="field_agent")  # firebase uid or 'field_agent'
     status = Column(String, default="Pending")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

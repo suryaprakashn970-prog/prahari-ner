@@ -1,16 +1,20 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Map as MapIcon, Bell, FileText, AlertTriangle, Settings } from 'lucide-react';
+import { LayoutDashboard, Map as MapIcon, Bell, FileText, AlertTriangle, Settings, Compass } from 'lucide-react';
 import clsx from 'clsx';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function Sidebar({ isOpen, onClose }) {
+  const { t } = useLanguage();
+
   const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Risk Map', path: '/risk-map', icon: MapIcon },
-    { name: 'Alerts', path: '/alerts', icon: Bell },
-    { name: 'Field Reports', path: '/reports', icon: FileText },
-    { name: 'Response', path: '/response', icon: AlertTriangle },
-    { name: 'Settings', path: '/settings', icon: Settings },
+    { key: 'dashboard', name: t('navigation.dashboard'), path: '/dashboard', icon: LayoutDashboard },
+    { key: 'riskMap', name: t('navigation.riskMap'), path: '/risk-map', icon: MapIcon },
+    { key: 'alerts', name: t('navigation.alerts'), path: '/alerts', icon: Bell },
+    { key: 'reports', name: t('navigation.fieldReports'), path: '/reports', icon: FileText },
+    { key: 'response', name: t('navigation.response'), path: '/response', icon: AlertTriangle },
+    { key: 'whatIf', name: t('navigation.whatIf', 'What-If'), path: '/what-if', icon: Compass },
+    { key: 'settings', name: t('navigation.settings'), path: '/settings', icon: Settings },
   ];
 
   return (
@@ -31,18 +35,18 @@ export default function Sidebar({ isOpen, onClose }) {
         <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
           {navItems.map((item) => (
             <NavLink
-              key={item.name}
+              key={item.key}
               to={item.path}
               onClick={() => { if (window.innerWidth < 1024) onClose(); }}
               className={({ isActive }) => clsx(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                 isActive 
-                  ? "bg-blue-50 text-blue-700" 
+                  ? "bg-blue-50 text-blue-700 font-bold" 
                   : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
               )}
             >
-              <item.icon className="w-5 h-5" />
-              {item.name}
+              <item.icon className="w-5 h-5 flex-shrink-0" />
+              <span>{item.name}</span>
             </NavLink>
           ))}
         </div>

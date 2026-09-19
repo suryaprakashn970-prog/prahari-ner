@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { Loader2 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function RiskFactors({ zone }) {
+  const { t, selectedLanguage } = useLanguage();
   const [factors, setFactors] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -32,9 +34,27 @@ export default function RiskFactors({ zone }) {
     fetchFactors();
   }, [zone]);
 
+  const translateInterpretation = (interp) => {
+    if (!interp) return '';
+    if (selectedLanguage === 'hi') {
+      return interp
+        .replace(/HIGH RISK/gi, 'उच्च जोखिम')
+        .replace(/MODERATE RISK/gi, 'मध्यम जोखिम')
+        .replace(/LOW RISK/gi, 'कम जोखिम')
+        .replace(/CRITICAL RISK/gi, 'अत्यंत गंभीर जोखिम')
+        .replace(/HIGH/gi, 'उच्च')
+        .replace(/MODERATE/gi, 'मध्यम')
+        .replace(/LOW/gi, 'कम')
+        .replace(/CRITICAL/gi, 'अत्यंत गंभीर');
+    }
+    return interp;
+  };
+
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-      <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">Model Factors</h2>
+      <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">
+        {t('riskFactors.title', 'Model Factors')}
+      </h2>
       
       {loading ? (
         <div className="flex justify-center p-4 text-gray-500">
@@ -44,20 +64,24 @@ export default function RiskFactors({ zone }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {factors.map((f, i) => (
             <div key={i} className="p-3 border border-gray-100 rounded-md bg-gray-50">
-              <div className="text-xs text-gray-500 font-medium uppercase mb-1">{f.feature.replace(/_/g, ' ')}</div>
+              <div className="text-xs text-gray-500 font-medium uppercase mb-1">
+                {t(`features.${f.feature}`, f.feature.replace(/_/g, ' '))}
+              </div>
               <div className="text-lg font-semibold text-gray-900 mb-1">{f.value}</div>
               <div className={`text-xs font-bold ${
                 f.interpretation.includes('HIGH') ? 'text-red-600' :
                 f.interpretation.includes('MODERATE') ? 'text-orange-600' :
                 'text-green-600'
               }`}>
-                {f.interpretation}
+                {translateInterpretation(f.interpretation)}
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="text-sm text-gray-500 p-4 text-center">No explanation available for this zone.</div>
+        <div className="text-sm text-gray-500 p-4 text-center">
+          {t('riskFactors.noExplanation', 'No explanation available for this zone.')}
+        </div>
       )}
     </div>
   );
