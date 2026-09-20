@@ -46,14 +46,14 @@ def root():
 @app.get("/health")
 def health_check():
     return {
-        "status": "healthy",
+        "status": "ok",
         "message": "Prahari-AI Sentinel Backend Online"
     }
 
 @app.get("/api/health")
 def api_health_check():
     return {
-        "status": "healthy",
+        "status": "ok",
         "message": "Prahari-AI Sentinel Backend Online"
     }
 
@@ -67,3 +67,8 @@ app.include_router(notifications.router, prefix="/api/notifications", tags=["not
 app.include_router(weather.router, prefix="/api/weather", tags=["weather"])
 app.include_router(roads.router, prefix="/api/roads", tags=["roads"])
 app.include_router(response.router, prefix="/api/response", tags=["response"])
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=False)

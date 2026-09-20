@@ -13,7 +13,7 @@ import DataSourceStatus from '../components/DataSourceStatus';
 import ManualPredictionForm from '../components/ManualPredictionForm';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
-import api, { API_URL } from '../services/api';
+import api from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 import { useSystemStatus } from '../context/SystemStatusContext';
 
@@ -274,6 +274,13 @@ export default function Dashboard() {
         if (zonesRes && zonesRes.length > 0) {
           setSelectedZone(zonesRes[0]);
         }
+
+        // If backend data (model / zones / alerts) successfully loaded, ensure systemStatus is synced
+        if ((modelRes && modelRes.loaded) || (zonesRes && zonesRes.length > 0) || (dataRes && (dataRes.status === 'ok' || dataRes.status === 'healthy'))) {
+          if (!systemStatus.isOnline) {
+            systemStatus.checkHealth();
+          }
+        }
       } catch (err) {
         console.error("Failed to load dashboard data", err);
         setError(t('errors.failedToLoad', "Failed to load application data. Please ensure the backend is running."));
@@ -301,13 +308,10 @@ export default function Dashboard() {
               <ModelStatus status={modelStatus} />
               
               <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col justify-center">
-                <div className="flex items-center justify-between mb-2">
+                <div className="mb-2">
                   <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">
                     {t('dashboard.systemStatus', 'System Status')}
                   </h2>
-                  <span className="text-[10px] text-gray-400 font-mono truncate max-w-[180px]" title={systemStatus.apiUrl}>
-                    {systemStatus.apiUrl.replace(/^https?:\/\//, '')}
-                  </span>
                 </div>
 
                 {systemStatus.isChecking ? (

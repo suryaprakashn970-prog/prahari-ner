@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { API_URL, checkHealthWithRetry } from '../services/api';
+import { API_BASE_URL, checkApiHealth } from '../services/api';
 
 const SystemStatusContext = createContext({
   status: 'checking', // 'checking' | 'online' | 'offline'
@@ -7,7 +7,8 @@ const SystemStatusContext = createContext({
   isChecking: true,
   isOffline: false,
   healthData: null,
-  apiUrl: API_URL,
+  apiUrl: API_BASE_URL,
+  healthUrl: `${API_BASE_URL}/health`,
   checkHealth: async () => {},
 });
 
@@ -16,22 +17,24 @@ export function SystemStatusProvider({ children }) {
   const [healthData, setHealthData] = useState(null);
   const isCheckingRef = useRef(false);
 
-  const checkHealth = useCallback(async (retries = 2, delayMs = 1200) => {
+  const checkHealth = useCallback(async () => {
     if (isCheckingRef.current) return;
     isCheckingRef.current = true;
     setStatus('checking');
 
     try {
-      const result = await checkHealthWithRetry(retries, delayMs);
+      const result = await checkApiHealth();
       if (result.status === 'ok') {
+        console.log('[PRAHARI-NER SystemStatus] Backend is ONLINE:', result.data);
         setStatus('online');
         setHealthData(result.data);
       } else {
+        console.warn('[PRAHARI-NER SystemStatus] Backend is OFFLINE:', result);
         setStatus('offline');
         setHealthData(null);
       }
     } catch (err) {
-      console.warn('Health check failed:', err);
+      console.error('[PRAHARI-NER SystemStatus] Unexpected error in checkHealth:', err);
       setStatus('offline');
       setHealthData(null);
     } finally {
@@ -41,11 +44,11 @@ export function SystemStatusProvider({ children }) {
 
   // Initial check on mount
   useEffect(() => {
-    checkHealth(2, 1000);
+    checkHealth();
 
     // Periodic heartbeat every 45s
     const interval = setInterval(() => {
-      checkHealth(1, 1000);
+      checkHealth();
     }, 45000);
 
     return () => clearInterval(interval);
@@ -57,8 +60,9 @@ export function SystemStatusProvider({ children }) {
     isChecking: status === 'checking',
     isOffline: status === 'offline',
     healthData,
-    apiUrl: API_URL,
-    checkHealth: () => checkHealth(2, 1200),
+    apiUrl: API_BASE_URL,
+    healthUrl: `${API_BASE_URL}/health`,
+    checkHealth,
   };
 
   return (

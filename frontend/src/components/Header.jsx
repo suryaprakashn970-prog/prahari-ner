@@ -82,6 +82,21 @@ export default function Header({ toggleSidebar, dataStatus }) {
             </span>
           )}
 
+          {currentStatus === 'config_missing' && (
+            <span
+              title={systemStatusCtx?.configError || 'Set VITE_API_URL in the deployment environment'}
+              className="bg-amber-50 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200 flex items-center gap-1.5 shadow-2xs"
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+              <span className="hidden sm:inline">
+                {t('common.apiConfigMissing', 'API Configuration Missing')}
+              </span>
+              <span className="sm:hidden">
+                {t('common.configError', 'Config Missing')}
+              </span>
+            </span>
+          )}
+
           {currentStatus === 'checking' && (
             <span className="bg-amber-50 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200 flex items-center gap-1.5 shadow-2xs">
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
@@ -94,22 +109,6 @@ export default function Header({ toggleSidebar, dataStatus }) {
             </span>
           )}
 
-          {currentStatus === 'offline' && (
-            <button
-              type="button"
-              onClick={() => systemStatusCtx?.checkHealth?.()}
-              title={t('common.retryConnection', 'Click to retry connection')}
-              className="bg-red-50 hover:bg-red-100 text-red-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-red-200 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
-            >
-              <span className="w-2 h-2 rounded-full bg-red-500"></span>
-              <span className="hidden sm:inline">
-                {t('common.systemOfflineUnreachable', 'System Offline — Server Unreachable')}
-              </span>
-              <span className="sm:hidden">
-                {t('common.offline', 'Offline')}
-              </span>
-            </button>
-          )}
 
           {user && (
             <div className="hidden md:flex items-center gap-1 text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-200">
