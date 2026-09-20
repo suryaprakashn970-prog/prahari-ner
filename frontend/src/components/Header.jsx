@@ -3,11 +3,18 @@ import { Shield, Menu, User, LogOut, Globe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useSystemStatus } from '../context/SystemStatusContext';
 
 export default function Header({ toggleSidebar, dataStatus }) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { selectedLanguage, setSelectedLanguage, t } = useLanguage();
+  const systemStatusCtx = useSystemStatus();
+
+  // If explicit dataStatus passed from parent, use it; otherwise use global system status
+  const currentStatus = dataStatus
+    ? (dataStatus.status === 'ok' ? 'online' : 'offline')
+    : (systemStatusCtx?.status || 'checking');
 
   const handleLogout = async () => {
     try {
@@ -63,15 +70,46 @@ export default function Header({ toggleSidebar, dataStatus }) {
             </button>
           </div>
 
-          <span className="bg-emerald-50 text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="hidden sm:inline">
-              {dataStatus?.status === 'error' ? t('common.systemOffline') : t('common.systemOnline')}
+          {currentStatus === 'online' && (
+            <span className="bg-emerald-50 text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5 shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="hidden sm:inline">
+                {t('common.systemOnlineConnected', 'System Online — API Connected')}
+              </span>
+              <span className="sm:hidden">
+                {t('common.online', 'Online')}
+              </span>
             </span>
-            <span className="sm:hidden">
-              {dataStatus?.status === 'error' ? t('common.offline') : t('common.online')}
+          )}
+
+          {currentStatus === 'checking' && (
+            <span className="bg-amber-50 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-amber-200 flex items-center gap-1.5 shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+              <span className="hidden sm:inline">
+                {t('common.checkingApi', 'Checking API...')}
+              </span>
+              <span className="sm:hidden">
+                {t('common.checkingApi', 'Checking API...')}
+              </span>
             </span>
-          </span>
+          )}
+
+          {currentStatus === 'offline' && (
+            <button
+              type="button"
+              onClick={() => systemStatusCtx?.checkHealth?.()}
+              title={t('common.retryConnection', 'Click to retry connection')}
+              className="bg-red-50 hover:bg-red-100 text-red-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-red-200 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+            >
+              <span className="w-2 h-2 rounded-full bg-red-500"></span>
+              <span className="hidden sm:inline">
+                {t('common.systemOfflineUnreachable', 'System Offline — Server Unreachable')}
+              </span>
+              <span className="sm:hidden">
+                {t('common.offline', 'Offline')}
+              </span>
+            </button>
+          )}
 
           {user && (
             <div className="hidden md:flex items-center gap-1 text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-200">

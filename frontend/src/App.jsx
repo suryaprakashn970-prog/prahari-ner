@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { SystemStatusProvider } from './context/SystemStatusContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -17,7 +18,8 @@ function App() {
   return (
     <AuthProvider>
       <LanguageProvider>
-        <BrowserRouter>
+        <SystemStatusProvider>
+          <BrowserRouter>
         <Routes>
           {/* Public routes accessible without authentication */}
           <Route path="/" element={<Landing />} />
@@ -85,6 +87,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+        </SystemStatusProvider>
       </LanguageProvider>
     </AuthProvider>
   );

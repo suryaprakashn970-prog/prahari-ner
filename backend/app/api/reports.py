@@ -18,8 +18,8 @@ class FieldReportCreate(BaseModel):
     # Report details — optional observation, image, and metadata
     report_type: Optional[str] = "Observation"
     description: Optional[str] = None
-    image_url: Optional[str] = None
     image: Optional[str] = None
+    image_url: Optional[str] = None
     reporter_id: Optional[str] = "field_agent"
 
 class FieldReportUpdate(BaseModel):
@@ -32,16 +32,11 @@ def get_reports(db: Session = Depends(get_db)):
 
 @router.post("/")
 def create_report(report: FieldReportCreate, db: Session = Depends(get_db)):
-    """Creates a new field report. Coordinates are optional."""
-    report_data = report.dict()
-    
-    # Map 'image' to 'image_url' if provided, and remove 'image' to match the DB model
-    if report_data.get("image"):
-        report_data["image_url"] = report_data["image"]
-    if "image" in report_data:
-        del report_data["image"]
-        
-    db_report = models.FieldReport(**report_data)
+    """Creates a new field report. Coordinates and images are optional."""
+    data = report.dict()
+    img = data.pop("image", None) or data.get("image_url")
+    data["image_url"] = img
+    db_report = models.FieldReport(**data)
     db.add(db_report)
     db.commit()
     db.refresh(db_report)

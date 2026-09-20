@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import PageLayout from "../components/PageLayout";
 import FieldReports from "../components/FieldReports";
-import api from "../services/api";
+import api, { API_URL } from "../services/api";
 import LoadingState from "../components/LoadingState";
 import { useLanguage } from "../context/LanguageContext";
 
@@ -209,7 +209,7 @@ export default function Reports() {
         else if (status === 500) setSubmitError("Server error (500). Check FastAPI logs.");
         else setSubmitError(`Submission failed (HTTP ${status}): ${format422Detail(detail)}`);
       } else if (err.request) {
-        setSubmitError(t('errors.backendUnavailable', "Cannot reach backend. Is the FastAPI server running at http://127.0.0.1:8000?"));
+        setSubmitError(t('errors.backendUnavailable', `Cannot reach backend at ${API_URL}. Please ensure the server is online.`));
       } else {
         setSubmitError(`Unexpected error: ${err.message}`);
       }

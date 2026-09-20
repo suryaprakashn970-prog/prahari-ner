@@ -13,8 +13,9 @@ import DataSourceStatus from '../components/DataSourceStatus';
 import ManualPredictionForm from '../components/ManualPredictionForm';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
-import api from '../services/api';
+import api, { API_URL } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
+import { useSystemStatus } from '../context/SystemStatusContext';
 
 // ── Emergency Contacts Block ─────────────────────────────────
 function EmergencyContacts() {
@@ -227,6 +228,7 @@ function SecondaryEmergencyCard({ emoji, label, number, subtitle, callText, bord
 // ── Dashboard Main Component ─────────────────────────────────
 export default function Dashboard() {
   const { t } = useLanguage();
+  const systemStatus = useSystemStatus();
   const navigate = useNavigate();
   const [modelStatus, setModelStatus] = useState(null);
   const [dataStatus, setDataStatus] = useState(null);
@@ -299,19 +301,57 @@ export default function Dashboard() {
               <ModelStatus status={modelStatus} />
               
               <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col justify-center">
-                <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-                  {t('dashboard.systemStatus', 'System Status')}
-                </h2>
-                <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${dataStatus?.status === 'ok' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  <span className={`font-bold ${dataStatus?.status === 'ok' ? 'text-green-700' : 'text-red-700'}`}>
-                    {dataStatus?.status === 'ok' ? t('common.systemOnline', 'System Online') : t('common.systemOffline', 'System Offline')}
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                    {t('dashboard.systemStatus', 'System Status')}
+                  </h2>
+                  <span className="text-[10px] text-gray-400 font-mono truncate max-w-[180px]" title={systemStatus.apiUrl}>
+                    {systemStatus.apiUrl.replace(/^https?:\/\//, '')}
                   </span>
                 </div>
-                {dataStatus?.status !== 'ok' && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    {t('dashboard.unreachableServer', 'API server is unreachable.')}
-                  </p>
+
+                {systemStatus.isChecking ? (
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full bg-amber-500 animate-ping"></div>
+                      <span className="font-bold text-sm text-amber-700">
+                        {t('common.checkingApi', 'Checking API...')}
+                      </span>
+                    </div>
+                  </div>
+                ) : systemStatus.isOnline ? (
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-base leading-none">🟢</span>
+                      <span className="font-bold text-sm text-green-700">
+                        {t('common.systemOnline', 'System Online')}
+                      </span>
+                    </div>
+                    <p className="text-xs font-semibold text-green-600 mt-1 ml-6">
+                      {t('common.apiConnected', 'API Connected')}
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base leading-none">🔴</span>
+                        <span className="font-bold text-sm text-red-700">
+                          {t('common.systemOffline', 'System Offline')}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => systemStatus.checkHealth()}
+                        className="text-[11px] font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                      >
+                        {t('common.retry', 'Retry')}
+                      </button>
+                    </div>
+                    <p className="text-xs text-red-600 mt-1 ml-6 font-medium">
+                      {t('dashboard.unreachableServer', 'API server is unreachable.')}
+                    </p>
+                  </div>
                 )}
               </div>
             </div>

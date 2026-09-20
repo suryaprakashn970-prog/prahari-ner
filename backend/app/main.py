@@ -17,6 +17,7 @@ origins = [
     "http://localhost:5174",
     "http://127.0.0.1:5174",
     "https://prahari-frontend-6wa3.onrender.com",
+    "https://prahari-frontend.onrender.com",
 ]
 
 frontend_url = os.getenv("FRONTEND_URL")
@@ -29,16 +30,31 @@ if frontend_url:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"https://.*\.onrender\.com",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+@app.get("/")
+def root():
+    return {
+        "status": "healthy",
+        "message": "Prahari-AI Sentinel Backend Online"
+    }
+
 @app.get("/health")
 def health_check():
     return {
-        "status": "ok",
-        "service": "PRAHARI-NER backend"
+        "status": "healthy",
+        "message": "Prahari-AI Sentinel Backend Online"
+    }
+
+@app.get("/api/health")
+def api_health_check():
+    return {
+        "status": "healthy",
+        "message": "Prahari-AI Sentinel Backend Online"
     }
 
 # Include routers
