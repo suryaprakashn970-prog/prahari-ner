@@ -1,7 +1,7 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .api import model, data, risk, alerts, reports, notifications, weather, roads, response
+from .api import model, data, risk, alerts, reports, notifications, weather, roads, response, environment
 from .database.database import engine
 from .database import models
 
@@ -65,6 +65,7 @@ app.include_router(alerts.router, prefix="/api/alerts", tags=["alerts"])
 app.include_router(reports.router, prefix="/api/reports", tags=["reports"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["notifications"])
 app.include_router(weather.router, prefix="/api/weather", tags=["weather"])
+app.include_router(environment.router, prefix="/api/environment", tags=["environment"])
 app.include_router(roads.router, prefix="/api/roads", tags=["roads"])
 app.include_router(response.router, prefix="/api/response", tags=["response"])
 

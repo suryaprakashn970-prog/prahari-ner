@@ -245,11 +245,18 @@ export const translations = {
       noDataSub: "No field stations or sensor telemetry currently reporting in this state.",
       languagesOf: "Languages of",
       selectedStateLabel: "Selected State",
-      languagesOfNer: "Languages of the North Eastern Region",
-      languagesSub: "Regional and indigenous languages spoken across all 8 North Eastern states",
-      clickToFilter: "Click to filter map to",
       languagesCount: "languages",
-      languageCount: "language"
+      languageCount: "language",
+      liveOpenMeteoTelemetry: "LIVE OPEN-METEO TELEMETRY",
+      realEnvironmentalData: "Real location-based environmental data",
+      clickMapToAnalyze: "Click anywhere in NER to inspect live environmental data",
+      referencePoints: "NER Reference Test Cities",
+      fetchingEnvironmentalData: "Fetching live Open-Meteo data...",
+      precipitation: "Precipitation",
+      analyzingRisk: "Analyzing risk with XGBoost...",
+      outsideNer: "Selected point is outside the North Eastern Region bounds.",
+      nearestRefCity: "Nearest City",
+      customLocation: "Custom Location"
     },
 
     alerts: {
@@ -765,7 +772,17 @@ export const translations = {
       languagesSub: "सभी 8 उत्तर पूर्वी राज्यों में बोली जाने वाली क्षेत्रीय और स्वदेशी भाषाएँ",
       clickToFilter: "मानचित्र को फ़िल्टर करने के लिए क्लिक करें:",
       languagesCount: "भाषाएँ",
-      languageCount: "भाषा"
+      languageCount: "भाषा",
+      liveOpenMeteoTelemetry: "लाइव ओपन-मेटियो टेलीमेट्री",
+      realEnvironmentalData: "वास्तविक स्थान-आधारित पर्यावरणीय डेटा",
+      clickMapToAnalyze: "लाइव पर्यावरणीय डेटा देखने के लिए एनईआर में कहीं भी क्लिक करें",
+      referencePoints: "एनईआर संदर्भ परीक्षण शहर",
+      fetchingEnvironmentalData: "ओपन-मेटियो लाइव डेटा प्राप्त हो रहा है...",
+      precipitation: "वर्षण",
+      analyzingRisk: "एक्सजीबूस्ट के साथ जोखिम का विश्लेषण...",
+      outsideNer: "चयनित बिंदु उत्तर पूर्वी क्षेत्र की सीमा से बाहर है।",
+      nearestRefCity: "निकटतम शहर",
+      customLocation: "कस्टम स्थान"
     },
 
     alerts: {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageLayout from '../components/PageLayout';
 import RiskMap from '../components/RiskMap';
 import api from '../services/api';
@@ -7,6 +8,7 @@ import { useLanguage } from '../context/LanguageContext';
 
 export default function RiskMapPage() {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [zones, setZones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedZone, setSelectedZone] = useState(null);
@@ -44,6 +46,11 @@ export default function RiskMapPage() {
               zones={zones}
               onSelectZone={setSelectedZone}
               selectedZone={selectedZone}
+              onWhatIf={(zone) => {
+                if (zone?.id) {
+                  navigate('/what-if', { state: { selectedZone: zone } });
+                }
+              }}
             />
           )}
         </div>

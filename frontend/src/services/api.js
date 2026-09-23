@@ -148,6 +148,9 @@ const api = {
   getResponsePriorities: () => client.get('/api/response/priorities').then(res => res.data),
   sendNotification: (data) => client.post('/api/notifications/send', data).then(res => res.data),
   runWhatIfAnalysis: (zoneId) => client.post('/api/risk/what-if', { zone_id: zoneId }).then(res => res.data),
+  getLocationEnvironment: (lat, lon, name) =>
+    client.get('/api/environment/location', { params: { latitude: lat, longitude: lon, ...(name ? { name } : {}) } }).then(res => res.data),
+  getReferencePoints: () => client.get('/api/environment/reference-points').then(res => res.data),
 };
 
 export default api;
